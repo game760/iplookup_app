@@ -27,8 +27,8 @@ func main() {
 		log.Fatalf("加载配置失败: %v", err)
 	}
 
-	// 初始化MySQL数据库（同时用于IP查询）
-	ipDB, err := ipdb.Init(db, cfg)
+	// 初始化MySQL数据库
+	db, err := database.Init(cfg)
 	if err != nil {
 		log.Fatalf("初始化MySQL失败: %v", err)
 	}
@@ -40,18 +40,16 @@ func main() {
 		}
 	}()
 
-	// 初始化IP查询器（基于MySQL）
-	ipDB, err := ipdb.Init(db, cfg)
-	if err != nil {
-		log.Fatalf("初始化IP查询器失败: %v", err)
-	}
+	// 初始化IP查询器（使用配置中的IP数据库路径）
+	ipDB := ipdb.NewIPDB(cfg.IPDatabase.IPv4Table)
 	defer func() {
+		// 调用IPDB的Close方法（需在ipdb.go中实现）
 		if err := ipDB.Close(); err != nil {
 			log.Printf("关闭IP查询器失败: %v", err)
 		}
 	}()
 
-	// 初始化路由
+	// 初始化路由（正确传递参数）
 	r := api.NewRouter(cfg, db, ipDB)
 
 	// 设置中间件
