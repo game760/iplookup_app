@@ -1,4 +1,4 @@
-module iplookup_go
+module iplookup/iplookup_go
 
 go 1.23.0
 
