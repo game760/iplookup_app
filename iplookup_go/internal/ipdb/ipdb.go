@@ -2,24 +2,30 @@ package ipdb
 
 import (
 	"iplookup/iplookup_go/internal/config"
+	"iplookup/iplookup_go/internal/database"
 	"iplookup/iplookup_go/internal/model"
-
 )
 
-// 假设IP数据库查询的核心逻辑
+// IPDB IP数据库查询器
 type IPDB struct {
-	db     *database.DB  // 数据库连接
-	cfg    *config.Config // 配置信息
+	db     *database.DB
+	cfg    *config.Config
 	DBPath string
 }
 
-// NewIPDB 初始化IP数据库实例
-func init(db *database.DB, cfg *config.Config) (*IPDB, error) {
+// Init 初始化IP查询器（修正为正确的初始化函数）
+func Init(db *database.DB, cfg *config.Config) (*IPDB, error) {
 	return &IPDB{
 		db:     db,
 		cfg:    cfg,
-		DBPath: cfg.IPDatabase.IPv4Table,
+		DBPath: cfg.IPDatabase.IPv4Table, // 可以根据实际需求调整
 	}, nil
+}
+
+// Close 关闭资源
+func (db *IPDB) Close() error {
+	// 实际项目中如果有需要关闭的资源可以在这里实现
+	return nil
 }
 
 // Query 查询IP地理位置信息
@@ -33,7 +39,7 @@ func (db *IPDB) Query(ip string) model.IPQueryResponse {
 		}
 	}
 
-	// 模拟查询逻辑
+	// 模拟查询逻辑（实际项目中可以在这里实现数据库查询）
 	location := &model.IPLocation{
 		IP:        ip,
 		Type:      "IPv4",
@@ -73,6 +79,6 @@ func (db *IPDB) BatchQuery(ips []string) model.IPQueryResponse {
 	return model.IPQueryResponse{
 		Code:    0,
 		Message: "批量查询成功",
-		Data:    locations,  // 切片类型，现在可匹配interface{}
+		Data:    locations,
 	}
 }
