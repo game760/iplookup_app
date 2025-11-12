@@ -1,29 +1,33 @@
 package ipdb
 
 import (
+	"iplookup/iplookup_go/internal/config"
+	"iplookup/iplookup_go/internal/database"
 	"iplookup/iplookup_go/internal/model"
 )
 
-// IPDB IP数据库查询器
+// IPDB IP数据库查询器结构体（依赖数据库连接和配置）
 type IPDB struct {
-	DBPath string
+	db   *database.DB       // 数据库连接
+	cfg  *config.Config     // 配置信息
 }
 
-// NewIPDB 初始化IP数据库实例
-func NewIPDB(dbPath string) *IPDB {
+// Init 初始化IP查询器（与main.go中的调用匹配）
+func Init(db *database.DB, cfg *config.Config) (*IPDB, error) {
 	return &IPDB{
-		DBPath: dbPath,
-	}
+		db:  db,
+		cfg: cfg,
+	}, nil
 }
 
-// Close 关闭IP数据库资源（空实现，可根据实际需求扩展）
+// Close 关闭资源（空实现，可根据实际需求扩展）
 func (db *IPDB) Close() error {
-	// 若有需要释放的资源（如文件句柄），可在此实现
 	return nil
 }
 
 // Query 查询IP地理位置信息
 func (db *IPDB) Query(ip string) model.IPQueryResponse {
+	// 模拟无效IP校验
 	if ip == "" {
 		return model.IPQueryResponse{
 			Code:    1,
@@ -32,6 +36,7 @@ func (db *IPDB) Query(ip string) model.IPQueryResponse {
 		}
 	}
 
+	// 模拟查询逻辑（实际场景可通过db.db查询MySQL）
 	location := &model.IPLocation{
 		IP:        ip,
 		Type:      "IPv4",
