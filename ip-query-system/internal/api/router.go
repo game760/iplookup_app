@@ -1,10 +1,11 @@
 package api
 
 import (
+	"iplookup_app/ip-query-system/internal/config"
+	"iplookup_app/ip-query-system/internal/database"
+	"iplookup_app/ip-query-system/internal/ipdb"
+
 	"github.com/gin-gonic/gin"
-	"ip-query-system/internal/config"
-	"ip-query-system/internal/database"
-	"ip-query-system/internal/ipdb"
 )
 
 // NewRouter 初始化路由

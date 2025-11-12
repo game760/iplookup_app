@@ -1,8 +1,7 @@
-// 定义常量
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:7895/api';
-const TIMEOUT = 10000; // 10秒超时
-
 // 基础请求函数
+const TIMEOUT = 5000; // 超时时间5秒
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'; // 从环境变量获取API地址
+
 const request = async (url) => {
   try {
     const controller = new AbortController();
@@ -27,7 +26,7 @@ const request = async (url) => {
       throw new Error(data.message || '服务器返回错误');
     }
     
-    return data.data || data;
+    return data;
   } catch (error) {
     if (error.name === 'AbortError') {
       throw new Error(`请求超时（${TIMEOUT}ms），请重试`);
@@ -36,17 +35,15 @@ const request = async (url) => {
   }
 };
 
-// 查询IP基本信息
-const queryBasicIP = async (ip) => {
-  return request(`/ip/query?ip=${encodeURIComponent(ip)}`);
-};
-
-// 获取本机IP信息
-const getMyIP = async () => {
-  return request('/ip/myip');
-};
-
+// 导出API方法
 export default {
-  queryBasicIP,
-  getMyIP
+  queryBasicIP(ip) {
+    return request(`/ip/query?ip=${encodeURIComponent(ip)}`);
+  },
+  queryDetailIP(ip) {
+    return request(`/ip/detail?ip=${encodeURIComponent(ip)}`);
+  },
+  getMyIP() {
+    return request('/ip/my');
+  }
 };
