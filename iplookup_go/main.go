@@ -18,13 +18,19 @@ import (
 )
 
 func main() {
-	configPath := flag.String("config", "./config.yml", "配置文件路径")
+
+	configPath := flag.String("config", "config/config.yml", "配置文件路径（例如：-config config/config.yml）")
 	flag.Parse()
+
+	// 检查文件是否存在
+	if _, err := os.Stat(*configPath); os.IsNotExist(err) {
+		log.Fatalf("配置文件不存在: %s\n请检查路径是否正确，或使用 -config 参数指定正确路径", *configPath)
+	}
 
 	// 加载配置
 	cfg, err := config.Load(*configPath)
 	if err != nil {
-		log.Fatalf("加载配置失败: %v", err)
+		log.Fatalf("加载配置失败: %v\n请检查配置文件格式是否正确", err)
 	}
 
 	// 初始化MySQL数据库
@@ -40,16 +46,18 @@ func main() {
 		}
 	}()
 
-	// 初始化IP查询器（使用配置中的IP数据库路径）
-	ipDB := ipdb.NewIPDB(cfg.IPDatabase.IPv4Table)
+	// 初始化IP查询器
+	ipDB, err := ipdb.Init(db, cfg)
+	if err != nil {
+		log.Fatalf("初始化IP查询器失败: %v", err)
+	}
 	defer func() {
-		// 调用IPDB的Close方法（需在ipdb.go中实现）
 		if err := ipDB.Close(); err != nil {
 			log.Printf("关闭IP查询器失败: %v", err)
 		}
 	}()
 
-	// 初始化路由（正确传递参数）
+	// 初始化路由
 	r := api.NewRouter(cfg, db, ipDB)
 
 	// 设置中间件
