@@ -27,20 +27,6 @@
             
             <div class="d-flex gap-2 mb-3">
               <button
-                class="btn btn-outline-primary btn-sm px-4"
-                @click="handleIPv4Query"
-                :disabled="isQuerying"
-              >
-                IPv4查询
-              </button>
-              <button
-                class="btn btn-outline-primary btn-sm px-4"
-                @click="handleIPv6Query"
-                :disabled="isQuerying"
-              >
-                IPv6查询
-              </button>
-              <button
                 class="btn btn-outline-secondary btn-sm px-4"
                 @click="queryMyIp"
                 :disabled="isQuerying"
@@ -83,6 +69,9 @@
                       <span class="badge bg-secondary" v-if="result.data.CountryName">
                         {{ result.data.CountryName }}
                       </span>
+                      <span class="badge bg-info ms-1">
+                        {{ isIPv6(result.data.IP) ? 'IPv6' : 'IPv4' }}
+                      </span>
                     </template>
                     <template v-else>
                       IP查询结果
@@ -91,7 +80,6 @@
                 </div>
                 <div class="card-body">
                   <div class="row">
-                    <!-- IP查询结果展示 (适配ip2region) -->
                     <div class="col-md-6 mb-3">
                       <strong>国家/地区:</strong> {{ result.data.CountryName || '未知' }}
                     </div>
@@ -135,7 +123,7 @@
                 </div>
                 <button 
                   class="btn btn-sm btn-outline-primary"
-                  @click="requery(item.ip, item.method)"
+                  @click="requery(item.ip)"
                 >
                   再次查询
                 </button>
@@ -147,3 +135,97 @@
     </div>
   </div>
 </template>
+
+<script setup>
+import { ref } from 'vue';
+import ipService from '../services/ipservice';
+
+// 状态管理
+const ipAddress = ref('');
+const result = ref(null);
+const error = ref('');
+const loading = ref(false);
+const isQuerying = ref(false);
+const recentQueries = ref([]);
+
+// 判断是否为IPv6地址
+const isIPv6 = (ip) => {
+  return ip.includes(':');
+};
+
+// 自动识别IP类型并查询
+const handleQuery = async () => {
+  if (!ipAddress.value.trim()) {
+    error.value = '请输入IP地址';
+    return;
+  }
+
+  loading.value = true;
+  isQuerying.value = true;
+  error.value = '';
+  
+  try {
+    // 调用自动识别接口
+    const data = await ipService.queryIP(ipAddress.value.trim());
+    result.value = data;
+    
+    // 记录查询历史
+    if (data.data?.IP) {
+      recentQueries.value.unshift({
+        ip: data.data.IP,
+        type: isIPv6(data.data.IP) ? 'IPv6' : 'IPv4'
+      });
+      // 限制历史记录长度
+      if (recentQueries.value.length > 10) {
+        recentQueries.value = recentQueries.value.slice(0, 10);
+      }
+    }
+  } catch (err) {
+    error.value = err.message || '查询失败，请重试';
+  } finally {
+    loading.value = false;
+    isQuerying.value = false;
+  }
+};
+
+// 重新查询历史记录中的IP
+const requery = async (ip) => {
+  ipAddress.value = ip;
+  await handleQuery();
+};
+
+// 查询本机IP
+const queryMyIp = async () => {
+  loading.value = true;
+  isQuerying.value = true;
+  error.value = '';
+  
+  try {
+    const data = await ipService.getMyIP();
+    result.value = data;
+    
+    // 同步更新输入框和历史记录
+    if (data.data?.IP) {
+      ipAddress.value = data.data.IP;
+      recentQueries.value.unshift({
+        ip: data.data.IP,
+        type: isIPv6(data.data.IP) ? 'IPv6' : 'IPv4'
+      });
+      
+      if (recentQueries.value.length > 10) {
+        recentQueries.value = recentQueries.value.slice(0, 10);
+      }
+    }
+  } catch (err) {
+    error.value = err.message || '查询失败，请重试';
+  } finally {
+    loading.value = false;
+    isQuerying.value = false;
+  }
+};
+
+// 清除历史记录
+const clearHistory = () => {
+  recentQueries.value = [];
+};
+</script>

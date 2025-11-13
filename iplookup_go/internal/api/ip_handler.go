@@ -18,39 +18,6 @@ func NewHandler(ipDB *ipdb.IPDB) *Handler {
 	return &Handler{ipDB: ipDB}
 }
 
-// QueryIPv4 IPv4查询接口
-func (h *Handler) QueryIPv4(c *gin.Context) {
-	ip := c.Query("ip")
-	if ip == "" {
-		c.JSON(http.StatusBadRequest, model.ErrorResponse("请提供IP地址"))
-		return
-	}
-
-	resp, err := h.ipDB.QueryIPv4(ip)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, model.ErrorResponse(resp.Message))
-		return
-	}
-
-	c.JSON(http.StatusOK, resp)
-}
-
-// QueryIPv6 IPv6查询接口
-func (h *Handler) QueryIPv6(c *gin.Context) {
-	ip := c.Query("ip")
-	if ip == "" {
-		c.JSON(http.StatusBadRequest, model.ErrorResponse("请提供IP地址"))
-		return
-	}
-
-	resp, err := h.ipDB.QueryIPv6(ip)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, model.ErrorResponse(resp.Message))
-		return
-	}
-
-	c.JSON(http.StatusOK, resp)
-}
 
 // QueryIP 自动识别IP类型查询
 func (h *Handler) QueryIP(c *gin.Context) {
@@ -79,40 +46,6 @@ func (h *Handler) QueryIP(c *gin.Context) {
 	default:
 		c.JSON(http.StatusBadRequest, model.ErrorResponse("无效的IP地址"))
 	}
-}
-
-// QueryIPv4Detail IPv4详细查询接口（需认证）
-func (h *Handler) QueryIPv4Detail(c *gin.Context) {
-	ip := c.Query("ip")
-	if ip == "" {
-		c.JSON(http.StatusBadRequest, model.ErrorResponse("请提供IP地址"))
-		return
-	}
-
-	resp, err := h.ipDB.QueryIPv4(ip)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, model.ErrorResponse(resp.Message))
-		return
-	}
-
-	c.JSON(http.StatusOK, resp)
-}
-
-// QueryIPv6Detail IPv6详细查询接口（需认证）
-func (h *Handler) QueryIPv6Detail(c *gin.Context) {
-	ip := c.Query("ip")
-	if ip == "" {
-		c.JSON(http.StatusBadRequest, model.ErrorResponse("请提供IP地址"))
-		return
-	}
-
-	resp, err := h.ipDB.QueryIPv6(ip)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, model.ErrorResponse(resp.Message))
-		return
-	}
-
-	c.JSON(http.StatusOK, resp)
 }
 
 // GetMyIP 查询本机IP接口
