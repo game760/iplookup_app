@@ -3,57 +3,61 @@ package ipdb
 import (
 	"errors"
 	"net"
-	"os"
+	"strconv"
 
-	"github.com/ip2location/ip2location-go/v9"
+	"github.com/lionsoul2014/ip2region/binding/golang/xdb"
 	"iplookup/iplookup_go/internal/config"
 	"iplookup/iplookup_go/internal/model"
 )
 
 // IPDB 封装IP数据库查询功能
 type IPDB struct {
-	ipv4DB *ip2location.DB
-	ipv6DB *ip2location.DB
+	db *xdb.Searcher
 }
 
 // Init 初始化IP数据库
 func Init(cfg *config.Config) (*IPDB, error) {
-	// 打开IPv4数据库
-	ipv4, err := ip2location.OpenDB(cfg.IPDatabase.IPv4DB)
+	// ip2region使用单一数据库文件
+	data, err := xdb.LoadContentFromFile(cfg.IPDatabase.IPv4DB)
 	if err != nil {
-		return nil, errors.New("无法打开IPv4数据库: " + err.Error())
+		return nil, errors.New("无法加载IP数据库: " + err.Error())
 	}
 
-	// 打开IPv6数据库
-	ipv6, err := ip2location.OpenDB(cfg.IPDatabase.IPv6DB)
+	searcher, err := xdb.NewWithBuffer(data)
 	if err != nil {
-		ipv4.Close() // 关闭已打开的IPv4数据库
-		return nil, errors.New("无法打开IPv6数据库: " + err.Error())
+		return nil, errors.New("初始化查询器失败: " + err.Error())
 	}
 
-	return &IPDB{
-		ipv4DB: ipv4,
-		ipv6DB: ipv6,
-	}, nil
+	return &IPDB{db: searcher}, nil
 }
 
 // Close 关闭数据库连接
 func (ipdb *IPDB) Close() error {
-	var err error
-	
-	if ipdb.ipv4DB != nil {
-		if closeErr := ipdb.ipv4DB.Close(); closeErr != nil {
-			err = errors.Join(err, closeErr)
+	ipdb.db.Close()
+	return nil
+}
+
+// 解析ip2region返回格式: 国家|区域|省份|城市|ISP
+func parseRegionData(data string) []string {
+	parts := make([]string, 5)
+	current := ""
+	idx := 0
+	for _, c := range data {
+		if c == '|' {
+			parts[idx] = current
+			current = ""
+			idx++
+			if idx >= 5 {
+				break
+			}
+		} else {
+			current += string(c)
 		}
 	}
-	
-	if ipdb.ipv6DB != nil {
-		if closeErr := ipdb.ipv6DB.Close(); closeErr != nil {
-			err = errors.Join(err, closeErr)
-		}
+	if idx < 5 {
+		parts[idx] = current
 	}
-	
-	return err
+	return parts
 }
 
 // QueryIPv4 查询IPv4地址信息
@@ -66,7 +70,7 @@ func (ipdb *IPDB) QueryIPv4(ipStr string) (model.IPv4Response, error) {
 		}, errors.New("invalid ipv4 address")
 	}
 
-	result, err := ipdb.ipv4DB.Get_all(ipStr)
+	result, err := ipdb.db.SearchByStr(ipStr)
 	if err != nil {
 		return model.IPv4Response{
 			Code:    2,
@@ -74,24 +78,24 @@ func (ipdb *IPDB) QueryIPv4(ipStr string) (model.IPv4Response, error) {
 		}, err
 	}
 
+	parts := parseRegionData(result)
+	
+	// ip2region没有经纬度等信息，这里留空或使用默认值
+	lat, _ := strconv.ParseFloat("0", 64)
+	lng, _ := strconv.ParseFloat("0", 64)
+
 	return model.IPv4Response{
 		Code:    0,
 		Message: "查询成功",
 		Data: model.IPv4Info{
 			IP:           ipStr,
-			CountryCode:  result.Country_short,
-			CountryName:  result.Country_long,
-			Region:       result.Region,
-			City:         result.City,
-			Latitude:     result.Latitude,
-			Longitude:    result.Longitude,
-			ZipCode:      result.Zipcode,
-			TimeZone:     result.Timezone,
-			ISP:          result.Isp,
-			Domain:       result.Domain,
-			UsageType:    result.Usagetype,
-			ASN:          result.Asn,
-			ASName:       result.As,
+			CountryName:  parts[0],
+			Region:       parts[1],
+			Province:     parts[2], // 新增省份字段
+			City:         parts[3],
+			ISP:          parts[4],
+			Latitude:     lat,
+			Longitude:    lng,
 		},
 	}, nil
 }
@@ -106,7 +110,8 @@ func (ipdb *IPDB) QueryIPv6(ipStr string) (model.IPv6Response, error) {
 		}, errors.New("invalid ipv6 address")
 	}
 
-	result, err := ipdb.ipv6DB.Get_all(ipStr)
+	// ip2region对IPv6支持有限，这里做兼容处理
+	result, err := ipdb.db.SearchByStr(ipStr)
 	if err != nil {
 		return model.IPv6Response{
 			Code:    2,
@@ -114,23 +119,23 @@ func (ipdb *IPDB) QueryIPv6(ipStr string) (model.IPv6Response, error) {
 		}, err
 	}
 
+	parts := parseRegionData(result)
+	
+	lat, _ := strconv.ParseFloat("0", 64)
+	lng, _ := strconv.ParseFloat("0", 64)
+
 	return model.IPv6Response{
 		Code:    0,
 		Message: "查询成功",
 		Data: model.IPv6Info{
 			IP:           ipStr,
-			CountryCode:  result.Country_short,
-			CountryName:  result.Country_long,
-			Region:       result.Region,
-			City:         result.City,
-			Latitude:     result.Latitude,
-			Longitude:    result.Longitude,
-			ZipCode:      result.Zipcode,
-			TimeZone:     result.Timezone,
-			ISP:          result.Isp,
-			ASN:          result.Asn,
-			ASName:       result.As,
-			Network:      result.Network,
+			CountryName:  parts[0],
+			Region:       parts[1],
+			Province:     parts[2], // 新增省份字段
+			City:         parts[3],
+			ISP:          parts[4],
+			Latitude:     lat,
+			Longitude:    lng,
 		},
 	}, nil
 }

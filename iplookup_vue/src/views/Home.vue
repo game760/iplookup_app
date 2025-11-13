@@ -80,8 +80,8 @@
                   <h5 class="mb-0">
                     <template v-if="result.data.IP">
                       {{ result.data.IP }} 
-                      <span class="badge bg-secondary" v-if="result.data.CountryCode">
-                        {{ result.data.CountryCode }}
+                      <span class="badge bg-secondary" v-if="result.data.CountryName">
+                        {{ result.data.CountryName }}
                       </span>
                     </template>
                     <template v-else>
@@ -91,70 +91,25 @@
                 </div>
                 <div class="card-body">
                   <div class="row">
-                    <!-- IPv4结果展示 -->
-                    <template v-if="result.data.Domain">
-                      <div class="col-md-6 mb-3">
-                        <strong>国家:</strong> {{ result.data.CountryName }}
-                      </div>
-                      <div class="col-md-6 mb-3">
-                        <strong>地区:</strong> {{ result.data.Region }}
-                      </div>
-                      <div class="col-md-6 mb-3">
-                        <strong>城市:</strong> {{ result.data.City }}
-                      </div>
-                      <div class="col-md-6 mb-3">
-                        <strong>时区:</strong> {{ result.data.TimeZone }}
-                      </div>
-                      <div class="col-md-6 mb-3">
-                        <strong>ISP:</strong> {{ result.data.ISP }}
-                      </div>
-                      <div class="col-md-6 mb-3">
-                        <strong>域名:</strong> {{ result.data.Domain }}
-                      </div>
-                      <div class="col-md-6 mb-3">
-                        <strong>使用类型:</strong> {{ result.data.UsageType }}
-                      </div>
-                      <div class="col-md-6 mb-3">
-                        <strong>ASN:</strong> {{ result.data.ASN }}
-                      </div>
-                      <div class="col-md-6 mb-3">
-                        <strong>AS名称:</strong> {{ result.data.ASName }}
-                      </div>
-                      <div class="col-md-6 mb-3">
-                        <strong>坐标:</strong> {{ result.data.Latitude }}, {{ result.data.Longitude }}
-                      </div>
-                    </template>
-                    
-                    <!-- IPv6结果展示 -->
-                    <template v-else-if="result.data.Network">
-                      <div class="col-md-6 mb-3">
-                        <strong>国家:</strong> {{ result.data.CountryName }}
-                      </div>
-                      <div class="col-md-6 mb-3">
-                        <strong>地区:</strong> {{ result.data.Region }}
-                      </div>
-                      <div class="col-md-6 mb-3">
-                        <strong>城市:</strong> {{ result.data.City }}
-                      </div>
-                      <div class="col-md-6 mb-3">
-                        <strong>时区:</strong> {{ result.data.TimeZone }}
-                      </div>
-                      <div class="col-md-6 mb-3">
-                        <strong>ISP:</strong> {{ result.data.ISP }}
-                      </div>
-                      <div class="col-md-6 mb-3">
-                        <strong>ASN:</strong> {{ result.data.ASN }}
-                      </div>
-                      <div class="col-md-6 mb-3">
-                        <strong>AS名称:</strong> {{ result.data.ASName }}
-                      </div>
-                      <div class="col-md-6 mb-3">
-                        <strong>网络:</strong> {{ result.data.Network }}
-                      </div>
-                      <div class="col-md-6 mb-3">
-                        <strong>坐标:</strong> {{ result.data.Latitude }}, {{ result.data.Longitude }}
-                      </div>
-                    </template>
+                    <!-- IP查询结果展示 (适配ip2region) -->
+                    <div class="col-md-6 mb-3">
+                      <strong>国家/地区:</strong> {{ result.data.CountryName || '未知' }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <strong>区域:</strong> {{ result.data.Region || '未知' }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <strong>省份:</strong> {{ result.data.Province || '未知' }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <strong>城市:</strong> {{ result.data.City || '未知' }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <strong>运营商:</strong> {{ result.data.ISP || '未知' }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <strong>坐标:</strong> {{ result.data.Latitude }}, {{ result.data.Longitude }}
+                    </div>
                   </div>
                 </div>
               </div>
