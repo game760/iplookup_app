@@ -20,7 +20,6 @@ type Config struct {
 
 	API struct {
 		Prefix       string   `yml:"prefix" yaml:"prefix"`
-		RateLimit    int      `yml:"rate_limit" yaml:"rate_limit"`
 		AllowOrigins []string `yml:"allow_origins" yaml:"allow_origins"`
 	} `yml:"api" yaml:"api"`
 }
@@ -59,9 +58,6 @@ func Load(path string) (*Config, error) {
 
 	if cfg.API.Prefix == "" {
 		cfg.API.Prefix = "/api/v1"
-	}
-	if cfg.API.RateLimit == 0 {
-		cfg.API.RateLimit = 30 // 默认每分钟30次
 	}
 	if len(cfg.API.AllowOrigins) == 0 {
 		cfg.API.AllowOrigins = []string{"*"}
