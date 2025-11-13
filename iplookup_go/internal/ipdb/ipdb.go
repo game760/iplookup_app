@@ -17,22 +17,24 @@ type IPDB struct {
 
 // Init 初始化IPv4和IPv6数据库
 func Init(cfg *config.Config) (*IPDB, error) {
-	// 加载IPv4数据库（修正返回值接收）
-	v4Data, err := xdb.LoadContentFromFile(cfg.IPDatabase.IPv4DB)
+	// 加载IPv4数据库（正确接收三个返回值：版本、数据、错误）
+	v4Version, v4Data, err := xdb.LoadContentFromFile(cfg.IPDatabase.IPv4DB)
 	if err != nil {
 		return nil, errors.New("无法加载IPv4数据库: " + err.Error())
 	}
-	v4Searcher, err := xdb.NewWithBuffer(v4Data) // 仅传入数据
+	// 传入版本和数据两个参数
+	v4Searcher, err := xdb.NewWithBuffer(v4Version, v4Data)
 	if err != nil {
 		return nil, errors.New("初始化IPv4查询器失败: " + err.Error())
 	}
 
-	// 加载IPv6数据库（修正返回值接收）
-	v6Data, err := xdb.LoadContentFromFile(cfg.IPDatabase.IPv6DB)
+	// 加载IPv6数据库（正确接收三个返回值）
+	v6Version, v6Data, err := xdb.LoadContentFromFile(cfg.IPDatabase.IPv6DB)
 	if err != nil {
 		return nil, errors.New("无法加载IPv6数据库: " + err.Error())
 	}
-	v6Searcher, err := xdb.NewWithBuffer(v6Data) // 仅传入数据
+	// 传入版本和数据两个参数
+	v6Searcher, err := xdb.NewWithBuffer(v6Version, v6Data)
 	if err != nil {
 		return nil, errors.New("初始化IPv6查询器失败: " + err.Error())
 	}
