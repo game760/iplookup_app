@@ -16,8 +16,8 @@ type Config struct {
 	IPDatabase struct {
 		IPv4DB string `yml:"ipv4_db" yaml:"ipv4_db"`
 		IPv6DB string `yml:"ipv6_db" yaml:"ipv6_db"`
-		v4version string `yml:"v4version" yaml:"v4version"`
-		v6version string `yml:"v6version" yaml:"v6version"`
+		v4Version string `yml:"v4Version" yaml:"v4Version"`
+		v6Version string `yml:"v6Version" yaml:"v6Version"`
 	} `yml:"ip_database" yaml:"ip_database"`
 
 	API struct {
