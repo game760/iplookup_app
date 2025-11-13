@@ -18,55 +18,41 @@ func NewHandler(ipDB *ipdb.IPDB) *Handler {
 	return &Handler{ipDB: ipDB}
 }
 
-// IPQueryHandler 基础IP查询接口
-func IPQueryHandler(ipDB *ipdb.IPDB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req struct {
-			IP string `form:"ip" binding:"required"`
-		}
-		if err := c.ShouldBindQuery(&req); err != nil {
-			c.JSON(http.StatusBadRequest, model.IPQueryResponse{
-				Code:    1,
-				Message: "无效的IP参数",
-			})
-			return
-		}
-
-		// 修复：正确处理ipDB.Query返回的单个响应值
-		resp := ipDB.Query(req.IP)
-		if resp.Code != 0 {
-			c.JSON(http.StatusBadRequest, resp)
-			return
-		}
-
-		// 类型断言提取IPLocation
-		location, ok := resp.Data.(*model.IPLocation)
-		if !ok {
-			c.JSON(http.StatusInternalServerError, model.IPQueryResponse{
-				Code:    2,
-				Message: "查询结果格式错误",
-			})
-			return
-		}
-
-		// 构建成功响应
-		c.JSON(http.StatusOK, model.IPQueryResponse{
-			Code:    0,
-			Message: "查询成功",
-			Data: &model.IPLocation{
-				IP:        req.IP,
-				Type:      location.Type,
-				Country:   location.Country,
-				Region:    location.Region,
-				City:      location.City,
-				Latitude:  location.Latitude,
-				Longitude: location.Longitude,
-			},
-		})
+// QueryIPv4 IPv4查询接口
+func (h *Handler) QueryIPv4(c *gin.Context) {
+	ip := c.Query("ip")
+	if ip == "" {
+		c.JSON(http.StatusBadRequest, model.ErrorResponse("请提供IP地址"))
+		return
 	}
+
+	resp, err := h.ipDB.QueryIPv4(ip)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, model.ErrorResponse(resp.Message))
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
 }
 
-// QueryIP 详细IP查询接口
+// QueryIPv6 IPv6查询接口
+func (h *Handler) QueryIPv6(c *gin.Context) {
+	ip := c.Query("ip")
+	if ip == "" {
+		c.JSON(http.StatusBadRequest, model.ErrorResponse("请提供IP地址"))
+		return
+	}
+
+	resp, err := h.ipDB.QueryIPv6(ip)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, model.ErrorResponse(resp.Message))
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+// QueryIP 自动识别IP类型查询
 func (h *Handler) QueryIP(c *gin.Context) {
 	ip := c.Query("ip")
 	if ip == "" {
@@ -74,31 +60,59 @@ func (h *Handler) QueryIP(c *gin.Context) {
 		return
 	}
 
-	// 修复：正确处理h.ipDB.Query返回值
-	resp := h.ipDB.Query(ip)
-	if resp.Code != 0 {
+	ipType := h.ipDB.GetIPType(ip)
+	switch ipType {
+	case "ipv4":
+		resp, err := h.ipDB.QueryIPv4(ip)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, model.ErrorResponse(resp.Message))
+			return
+		}
+		c.JSON(http.StatusOK, resp)
+	case "ipv6":
+		resp, err := h.ipDB.QueryIPv6(ip)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, model.ErrorResponse(resp.Message))
+			return
+		}
+		c.JSON(http.StatusOK, resp)
+	default:
+		c.JSON(http.StatusBadRequest, model.ErrorResponse("无效的IP地址"))
+	}
+}
+
+// QueryIPv4Detail IPv4详细查询接口（需认证）
+func (h *Handler) QueryIPv4Detail(c *gin.Context) {
+	ip := c.Query("ip")
+	if ip == "" {
+		c.JSON(http.StatusBadRequest, model.ErrorResponse("请提供IP地址"))
+		return
+	}
+
+	resp, err := h.ipDB.QueryIPv4(ip)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, model.ErrorResponse(resp.Message))
 		return
 	}
 
-	location, ok := resp.Data.(*model.IPLocation)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, model.ErrorResponse("查询结果格式错误"))
+	c.JSON(http.StatusOK, resp)
+}
+
+// QueryIPv6Detail IPv6详细查询接口（需认证）
+func (h *Handler) QueryIPv6Detail(c *gin.Context) {
+	ip := c.Query("ip")
+	if ip == "" {
+		c.JSON(http.StatusBadRequest, model.ErrorResponse("请提供IP地址"))
 		return
 	}
 
-	// 构建详细响应
-	c.JSON(http.StatusOK, model.SuccessResponse(model.IPInfo{
-		IP:         ip,
-		Type:       location.Type,
-		Country:    location.Country,
-		Region:     location.Region,
-		City:       location.City,
-		Latitude:   location.Latitude,
-		Longitude:  location.Longitude,
-		ZipCode:    "", // 可根据实际IP库补充
-		Timezone:   "", // 可根据实际IP库补充
-	}))
+	resp, err := h.ipDB.QueryIPv6(ip)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, model.ErrorResponse(resp.Message))
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
 }
 
 // GetMyIP 查询本机IP接口
@@ -109,29 +123,28 @@ func (h *Handler) GetMyIP(c *gin.Context) {
 		return
 	}
 
-	// 修复：正确处理h.ipDB.Query返回值及语法错误（括号匹配）
-	resp := h.ipDB.Query(ip)
-	if resp.Code != 0 {
-		c.JSON(http.StatusInternalServerError, model.ErrorResponse("查询失败: "+resp.Message))
+	ipType := h.ipDB.GetIPType(ip)
+	var result interface{}
+	
+	switch ipType {
+	case "ipv4":
+		resp, err := h.ipDB.QueryIPv4(ip)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, model.ErrorResponse("查询失败: "+resp.Message))
+			return
+		}
+		result = resp
+	case "ipv6":
+		resp, err := h.ipDB.QueryIPv6(ip)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, model.ErrorResponse("查询失败: "+resp.Message))
+			return
+		}
+		result = resp
+	default:
+		c.JSON(http.StatusInternalServerError, model.ErrorResponse("无法识别IP类型"))
 		return
 	}
 
-	location, ok := resp.Data.(*model.IPLocation)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, model.ErrorResponse("查询结果格式错误"))
-		return
-	}
-
-	// 构建本机IP响应
-	c.JSON(http.StatusOK, model.SuccessResponse(model.IPInfo{
-		IP:         ip,
-		Type:       location.Type,
-		Country:    location.Country,
-		Region:     location.Region,
-		City:       location.City,
-		Latitude:   location.Latitude,
-		Longitude:  location.Longitude,
-		ZipCode:    "",
-		Timezone:   "",
-	}))
+	c.JSON(http.StatusOK, result)
 }

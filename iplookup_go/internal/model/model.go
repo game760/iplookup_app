@@ -1,40 +1,65 @@
-package model
-
-// IPQueryResponse IP查询通用响应
-type IPQueryResponse struct {
-	Code    int         `json:"code"`    // 0:成功，非0:错误
-	Message string      `json:"message"` // 提示信息
-	Data    interface{} `json:"data"`    // 数据（成功时返回）
+// IPv4Info IPv4详细信息
+type IPv4Info struct {
+	IP           string  `json:"ip"`
+	CountryCode  string  `json:"country_code"`
+	CountryName  string  `json:"country_name"`
+	Region       string  `json:"region"`
+	City         string  `json:"city"`
+	Latitude     float64 `json:"latitude"`
+	Longitude    float64 `json:"longitude"`
+	ZipCode      string  `json:"zip_code,omitempty"`
+	TimeZone     string  `json:"timezone,omitempty"`
+	ISP          string  `json:"isp,omitempty"`
+	Domain       string  `json:"domain,omitempty"`
+	UsageType    string  `json:"usage_type,omitempty"`
+	ASN          string  `json:"asn,omitempty"`
+	ASName       string  `json:"as_name,omitempty"`
 }
 
-// IPInfo 详细IP信息（用于详细查询接口）
-type IPInfo struct {
-	IP         string  `json:"ip"`
-	Type       string  `json:"type"`
-	Country    string  `json:"country"`
-	Region     string  `json:"region"`
-	City       string  `json:"city"`
-	Latitude   float64 `json:"latitude"`
-	Longitude  float64 `json:"longitude"`
-	ZipCode    string  `json:"zip_code,omitempty"`
-	Timezone   string  `json:"timezone,omitempty"`
-	ISP        string  `json:"isp,omitempty"` // 互联网服务提供商
+// IPv4Response IPv4查询响应
+type IPv4Response struct {
+	Code    int       `json:"code"`
+	Message string    `json:"message"`
+	Data    IPv4Info  `json:"data,omitempty"`
 }
 
-// SuccessResponse 通用成功响应
-func SuccessResponse(data interface{}) IPQueryResponse {
-	return IPQueryResponse{
-		Code:    0,
-		Message: "success",
-		Data:    data,
+// IPv6Info IPv6详细信息
+type IPv6Info struct {
+	IP           string  `json:"ip"`
+	CountryCode  string  `json:"country_code"`
+	CountryName  string  `json:"country_name"`
+	Region       string  `json:"region"`
+	City         string  `json:"city"`
+	Latitude     float64 `json:"latitude"`
+	Longitude    float64 `json:"longitude"`
+	ZipCode      string  `json:"zip_code,omitempty"`
+	TimeZone     string  `json:"timezone,omitempty"`
+	ISP          string  `json:"isp,omitempty"`
+	ASN          string  `json:"asn,omitempty"`
+	ASName       string  `json:"as_name,omitempty"`
+	Network      string  `json:"network,omitempty"`
+}
+
+// IPv6Response IPv6查询响应
+type IPv6Response struct {
+	Code    int       `json:"code"`
+	Message string    `json:"message"`
+	Data    IPv6Info  `json:"data,omitempty"`
+}
+
+// ErrorResponse 错误响应
+func ErrorResponse(message string) map[string]interface{} {
+	return map[string]interface{}{
+		"code":    1,
+		"message": message,
 	}
 }
 
-// ErrorResponse 通用错误响应
-func ErrorResponse(message string) IPQueryResponse {
-	return IPQueryResponse{
-		Code:    1,
-		Message: message,
-		Data:    nil,
+// SuccessResponse 成功响应
+func SuccessResponse(data interface{}) map[string]interface{} {
+	return map[string]interface{}{
+		"code":    0,
+		"message": "success",
+		"data":    data,
 	}
 }

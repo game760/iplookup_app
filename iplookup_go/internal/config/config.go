@@ -13,25 +13,22 @@ type Config struct {
 		WriteTimeout int    `yml:"write_timeout" yaml:"write_timeout"`
 	} `yml:"server" yaml:"server"`
 
-	Database struct {
-		Host     string `yml:"host" yaml:"host"`
-		Port     string `yml:"port" yaml:"port"`
-		User     string `yml:"user" yaml:"user"`
-		Password string `yml:"password" yaml:"password"`
-		DBName   string `yml:"db_name" yaml:"db_name"`
-	} `yml:"database" yaml:"database"`
-
 	IPDatabase struct {
-		IPv4Table string `yml:"ipv4_table" yaml:"ipv4_table"`
-		IPv6Table string `yml:"ipv6_table" yaml:"ipv6_table"`
+		IPv4DB string `yml:"ipv4_db" yaml:"ipv4_db"`
+		IPv6DB string `yml:"ipv6_db" yaml:"ipv6_db"`
 	} `yml:"ip_database" yaml:"ip_database"`
-}
-	// 添加API相关配置（解决cfg.API未定义问题）
+
 	API struct {
-		JWTSecret   string `yml:"jwt_secret" yaml:"jwt_secret"`
-		RateLimit   int    `yml:"rate_limit" yaml:"rate_limit"`
-		AllowOrigins []string `yml:"allow_origins" yaml:"allow_origins"`
+		Prefix          string   `yml:"prefix" yaml:"prefix"`
+		JWTSecret       string   `yml:"jwt_secret" yaml:"jwt_secret"`
+		RateLimit       int      `yml:"rate_limit" yaml:"rate_limit"`
+		AllowOrigins    []string `yml:"allow_origins" yaml:"allow_origins"`
 	} `yml:"api" yaml:"api"`
+
+	JWT struct {
+		Secret     string `yml:"secret" yaml:"secret"`
+		ExpiresHours int  `yml:"expires_hours" yaml:"expires_hours"`
+	} `yml:"jwt" yaml:"jwt"`
 }
 
 // Load 从YML/YAML文件加载配置，支持两种标签格式（优先yml）
@@ -43,12 +40,12 @@ func Load(path string) (*Config, error) {
 	}
 
 	var cfg Config
-	// 解析YAML内容，yaml.v3会优先识别结构体中的`yml`标签（若存在），同时兼容`yaml`标签
+	// 解析YAML内容
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, err
 	}
 
-	// 设置完整默认值（避免空值导致后续业务错误）
+	// 设置完整默认值
 	if cfg.Server.Port == "" {
 		cfg.Server.Port = "8080"
 	}
@@ -59,33 +56,29 @@ func Load(path string) (*Config, error) {
 		cfg.Server.WriteTimeout = 30
 	}
 
-	if cfg.Database.Host == "" {
-		cfg.Database.Host = "localhost"
+	if cfg.IPDatabase.IPv4DB == "" {
+		cfg.IPDatabase.IPv4DB = "./ipdata/ipv4.xdb"
 	}
-	if cfg.Database.Port == "" {
-		cfg.Database.Port = "3306"
-	}
-	if cfg.Database.User == "" {
-		cfg.Database.User = "root"
-	}
-	// 密码默认空（通常由用户在配置文件中指定，不强制默认值）
-
-	if cfg.Database.DBName == "" {
-		cfg.Database.DBName = "ip2location"
+	if cfg.IPDatabase.IPv6DB == "" {
+		cfg.IPDatabase.IPv6DB = "./ipdata/ipv6.xdb"
 	}
 
-	if cfg.IPDatabase.IPv4Table == "" {
-		cfg.IPDatabase.IPv4Table = "ip2location_db11"
+	if cfg.API.Prefix == "" {
+		cfg.API.Prefix = "/api/v1"
 	}
-	if cfg.IPDatabase.IPv6Table == "" {
-		cfg.IPDatabase.IPv6Table = "ip2location_db11_ipv6"
-	}
-// API配置默认值
 	if cfg.API.RateLimit == 0 {
 		cfg.API.RateLimit = 100
 	}
 	if len(cfg.API.AllowOrigins) == 0 {
 		cfg.API.AllowOrigins = []string{"*"}
 	}
+
+	if cfg.JWT.Secret == "" {
+		cfg.JWT.Secret = "default-secret-key-change-in-production"
+	}
+	if cfg.JWT.ExpiresHours == 0 {
+		cfg.JWT.ExpiresHours = 24
+	}
+
 	return &cfg, nil
 }

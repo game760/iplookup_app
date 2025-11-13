@@ -1,106 +1,151 @@
 package ipdb
 
 import (
-	"database/sql"
 	"errors"
 	"net"
+	"os"
+
+	"github.com/ip2location/ip2location-go/v9"
 	"iplookup/iplookup_go/internal/config"
 	"iplookup/iplookup_go/internal/model"
 )
 
-// IPLocation 存储IP地理位置信息
-type IPLocation struct {
-	IP        string  `json:"ip"`
-	Type      string  `json:"type"` // "ipv4" 或 "ipv6"
-	Country   string  `json:"country"`
-	Region    string  `json:"region"`
-	City      string  `json:"city"`
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-}
-
-// IPDB IP数据库查询器
+// IPDB 封装IP数据库查询功能
 type IPDB struct {
-	db        *sql.DB
-	ipv4Table string
-	ipv6Table string
+	ipv4DB *ip2location.DB
+	ipv6DB *ip2location.DB
 }
 
-// Init 初始化IP查询器
-func Init(db *sql.DB, cfg *config.Config) (*IPDB, error) {
+// Init 初始化IP数据库
+func Init(cfg *config.Config) (*IPDB, error) {
+	// 打开IPv4数据库
+	ipv4, err := ip2location.OpenDB(cfg.IPDatabase.IPv4DB)
+	if err != nil {
+		return nil, errors.New("无法打开IPv4数据库: " + err.Error())
+	}
+
+	// 打开IPv6数据库
+	ipv6, err := ip2location.OpenDB(cfg.IPDatabase.IPv6DB)
+	if err != nil {
+		ipv4.Close() // 关闭已打开的IPv4数据库
+		return nil, errors.New("无法打开IPv6数据库: " + err.Error())
+	}
+
 	return &IPDB{
-		db:        db,
-		ipv4Table: cfg.IPDatabase.IPv4Table,
-		ipv6Table: cfg.IPDatabase.IPv6Table,
+		ipv4DB: ipv4,
+		ipv6DB: ipv6,
 	}, nil
 }
 
-// Query 查询IP信息
-func (ipdb *IPDB) Query(ipStr string) (model.IPQueryResponse, error) {
-	// 1. 验证IP类型
-	ip := net.ParseIP(ipStr)
-	if ip == nil {
-		return model.IPQueryResponse{
-			Code:    1,
-			Message: "无效的IP地址",
-		}, errors.New("invalid ip")
-	}
-
-	// 2. 区分IPv4/IPv6，选择对应表
-	var table string
-	var ipType string
-	if ip.To4() != nil {
-		table = ipdb.ipv4Table
-		ipType = "ipv4"
-	} else if ip.To16() != nil {
-		table = ipdb.ipv6Table
-		ipType = "ipv6"
-	} else {
-		return model.IPQueryResponse{
-			Code:    2,
-			Message: "不支持的IP类型",
-		}, errors.New("unsupported ip type")
-	}
-
-	// 3. 从数据库查询（假设表结构包含country/region/city/latitude/longitude字段）
-	querySQL := `
-		SELECT country, region, city, latitude, longitude 
-		FROM ` + table + ` 
-		WHERE ip_start <= INET6_ATON(?) AND ip_end >= INET6_ATON(?)
-		LIMIT 1
-	`
-	var loc IPLocation
-	err := ipdb.db.QueryRow(querySQL, ipStr, ipStr).Scan(
-		&loc.Country,
-		&loc.Region,
-		&loc.City,
-		&loc.Latitude,
-		&loc.Longitude,
-	)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return model.IPQueryResponse{
-				Code:    3,
-				Message: "未查询到IP信息",
-			}, nil
+// Close 关闭数据库连接
+func (ipdb *IPDB) Close() error {
+	var err error
+	
+	if ipdb.ipv4DB != nil {
+		if closeErr := ipdb.ipv4DB.Close(); closeErr != nil {
+			err = errors.Join(err, closeErr)
 		}
-		return model.IPQueryResponse{
-			Code:    4,
-			Message: "数据库查询失败",
+	}
+	
+	if ipdb.ipv6DB != nil {
+		if closeErr := ipdb.ipv6DB.Close(); closeErr != nil {
+			err = errors.Join(err, closeErr)
+		}
+	}
+	
+	return err
+}
+
+// QueryIPv4 查询IPv4地址信息
+func (ipdb *IPDB) QueryIPv4(ipStr string) (model.IPv4Response, error) {
+	ip := net.ParseIP(ipStr)
+	if ip == nil || ip.To4() == nil {
+		return model.IPv4Response{
+			Code:    1,
+			Message: "无效的IPv4地址",
+		}, errors.New("invalid ipv4 address")
+	}
+
+	result, err := ipdb.ipv4DB.Get_all(ipStr)
+	if err != nil {
+		return model.IPv4Response{
+			Code:    2,
+			Message: "查询失败: " + err.Error(),
 		}, err
 	}
 
-	// 4. 组装结果
-	loc.IP = ipStr
-	loc.Type = ipType
-	return model.IPQueryResponse{
+	return model.IPv4Response{
 		Code:    0,
 		Message: "查询成功",
-		Data:    loc,
+		Data: model.IPv4Info{
+			IP:           ipStr,
+			CountryCode:  result.Country_short,
+			CountryName:  result.Country_long,
+			Region:       result.Region,
+			City:         result.City,
+			Latitude:     result.Latitude,
+			Longitude:    result.Longitude,
+			ZipCode:      result.Zipcode,
+			TimeZone:     result.Timezone,
+			ISP:          result.Isp,
+			Domain:       result.Domain,
+			UsageType:    result.Usagetype,
+			ASN:          result.Asn,
+			ASName:       result.As,
+		},
 	}, nil
 }
 
-// Close 关闭资源（如果需要）
-func (ipdb *IPDB) Close() error {
-	return nil
+// QueryIPv6 查询IPv6地址信息
+func (ipdb *IPDB) QueryIPv6(ipStr string) (model.IPv6Response, error) {
+	ip := net.ParseIP(ipStr)
+	if ip == nil || ip.To16() == nil || ip.To4() != nil {
+		return model.IPv6Response{
+			Code:    1,
+			Message: "无效的IPv6地址",
+		}, errors.New("invalid ipv6 address")
+	}
+
+	result, err := ipdb.ipv6DB.Get_all(ipStr)
+	if err != nil {
+		return model.IPv6Response{
+			Code:    2,
+			Message: "查询失败: " + err.Error(),
+		}, err
+	}
+
+	return model.IPv6Response{
+		Code:    0,
+		Message: "查询成功",
+		Data: model.IPv6Info{
+			IP:           ipStr,
+			CountryCode:  result.Country_short,
+			CountryName:  result.Country_long,
+			Region:       result.Region,
+			City:         result.City,
+			Latitude:     result.Latitude,
+			Longitude:    result.Longitude,
+			ZipCode:      result.Zipcode,
+			TimeZone:     result.Timezone,
+			ISP:          result.Isp,
+			ASN:          result.Asn,
+			ASName:       result.As,
+			Network:      result.Network,
+		},
+	}, nil
+}
+
+// GetIPType 判断IP类型
+func (ipdb *IPDB) GetIPType(ipStr string) string {
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return "invalid"
+	}
+	if ip.To4() != nil {
+		return "ipv4"
+	}
+	if ip.To16() != nil {
+		return "ipv6"
+	}
+	return "unknown"
 }

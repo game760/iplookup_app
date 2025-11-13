@@ -12,13 +12,12 @@ import (
 
 	"iplookup/iplookup_go/internal/api"
 	"iplookup/iplookup_go/internal/config"
-	"iplookup/iplookup_go/internal/database"
 	"iplookup/iplookup_go/internal/ipdb"
 	"iplookup/iplookup_go/internal/middleware"
 )
 
 func main() {
-	configPath := flag.String("config", "./config.yml", "配置文件路径")
+	configPath := flag.String("config", "./config/env.config.yml", "配置文件路径")
 	flag.Parse()
 
 	// 加载配置
@@ -27,21 +26,8 @@ func main() {
 		log.Fatalf("加载配置失败: %v", err)
 	}
 
-	// 初始化MySQL数据库
-	db, err := database.Init(cfg)
-	if err != nil {
-		log.Fatalf("初始化MySQL失败: %v", err)
-	}
-	defer func() {
-		if err := database.Close(db); err != nil {
-			log.Printf("关闭MySQL失败: %v", err)
-		} else {
-			log.Println("MySQL已关闭")
-		}
-	}()
-
-	// 初始化IP查询器（现在ipdb.Init已存在，参数匹配）
-	ipDB, err := ipdb.Init(db, cfg)
+	// 初始化IP查询器
+	ipDB, err := ipdb.Init(cfg)
 	if err != nil {
 		log.Fatalf("初始化IP查询器失败: %v", err)
 	}
@@ -52,7 +38,7 @@ func main() {
 	}()
 
 	// 初始化路由
-	r := api.NewRouter(cfg, db, ipDB)
+	r := api.NewRouter(cfg, ipDB)
 
 	// 设置中间件
 	middleware.Setup(r, cfg)
