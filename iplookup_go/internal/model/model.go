@@ -1,3 +1,5 @@
+package model
+
 // IPv4Info IPv4详细信息
 type IPv4Info struct {
 	IP           string  `json:"ip"`
